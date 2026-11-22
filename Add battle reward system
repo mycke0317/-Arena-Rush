@@ -1,0 +1,63 @@
+
+const SETTINGS_KEY = 'arena-rush-settings-v1';
+
+const DEFAULT_SETTINGS = {
+  sound: true,
+  music: true,
+  vibration: true,
+  language: 'ko',
+  graphics: 'high'
+};
+
+export function getSettings() {
+  try {
+    const saved = localStorage.getItem(SETTINGS_KEY);
+
+    if (!saved) {
+      return { ...DEFAULT_SETTINGS };
+    }
+
+    return {
+      ...DEFAULT_SETTINGS,
+      ...JSON.parse(saved)
+    };
+  } catch {
+    return { ...DEFAULT_SETTINGS };
+  }
+}
+
+export function updateSetting(key, value) {
+  const allowedKeys = Object.keys(DEFAULT_SETTINGS);
+
+  if (!allowedKeys.includes(key)) {
+    return false;
+  }
+
+  const settings = getSettings();
+  settings[key] = value;
+
+  try {
+    localStorage.setItem(
+      SETTINGS_KEY,
+      JSON.stringify(settings)
+    );
+
+    return true;
+  } catch (error) {
+    console.error('설정 저장 실패:', error);
+    return false;
+  }
+}
+
+export function resetSettings() {
+  try {
+    localStorage.setItem(
+      SETTINGS_KEY,
+      JSON.stringify(DEFAULT_SETTINGS)
+    );
+
+    return true;
+  } catch {
+    return false;
+  }
+}
