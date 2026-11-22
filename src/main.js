@@ -1,109 +1,119 @@
 
 import './style.css';
+import './battle.css';
 import * as THREE from 'three';
+import { startBattle } from './battle.js';
 
 const app = document.querySelector('#app');
 
 app.innerHTML = `
-  <div class="game">
-
-    <header class="topbar">
+  <main class="lobby">
+    <header class="top-bar">
       <div class="profile">
-        <div class="avatar">⚔️</div>
+        <div class="profile-avatar">⚔️</div>
         <div>
-          <strong>PLAYER</strong>
-          <small>트로피 🏆 0</small>
+          <strong>플레이어</strong>
+          <small>레벨 1</small>
         </div>
       </div>
 
       <div class="currencies">
         <span>🪙 100</span>
-        <span>💎 20</span>
+        <span>💎 10</span>
       </div>
     </header>
 
-    <aside class="left-menu">
-      <button data-page="친구">👥<small>친구</small></button>
-      <button data-page="클럽">🛡️<small>클럽</small></button>
-      <button data-page="우편함">✉️<small>우편함</small></button>
-    </aside>
+    <nav class="side-menu">
+      <button data-menu="친구">👥 친구</button>
+      <button data-menu="클럽">🏆 클럽</button>
+      <button data-menu="상점">🛒 상점</button>
+    </nav>
 
-    <aside class="right-menu">
-      <button data-page="상점">🛒<small>상점</small></button>
-      <button data-page="브롤러">🦸<small>브롤러</small></button>
-      <button data-page="스타 드롭">🌟<small>스타 드롭</small></button>
-    </aside>
-
-    <main class="hero">
-      <div class="season">SEASON 01 · ARENA RUSH</div>
-      <div id="character"></div>
-      <h1>ARENA RUSH</h1>
-      <p>최강의 전사가 되어라!</p>
-      <div class="character-name">⚔️ 기본 전사</div>
-    </main>
-
-    <section class="bottom-menu">
-      <button data-page="퀘스트">📜<small>퀘스트</small></button>
-      <button data-page="이벤트">🎯<small>이벤트</small></button>
-      <button data-page="브롤러">🦸<small>캐릭터</small></button>
+    <section class="hero-section">
+      <div class="hero-title">
+        <h1>ARENA RUSH</h1>
+        <p>최고의 전투를 시작하라!</p>
+      </div>
+      <div id="hero-canvas"></div>
     </section>
 
-    <button class="battle-button" id="battle">
-      전투 시작!
-    </button>
-
-    <div class="page-overlay" id="overlay">
-      <div class="page-box">
-        <button class="close" id="close">✕</button>
-        <h2 id="page-title">메뉴</h2>
-        <div id="page-content"></div>
+    <section class="event-panel">
+      <div>
+        <strong>오늘의 이벤트</strong>
+        <p>3대3 아레나 전투</p>
       </div>
-    </div>
+      <button id="event-button">이벤트 보기</button>
+    </section>
 
+    <section class="bottom-menu">
+      <button data-menu="브롤러">⚔️<span>브롤러</span></button>
+      <button data-menu="스타 드롭">🎁<span>스타 드롭</span></button>
+      <button data-menu="퀘스트">📜<span>퀘스트</span></button>
+      <button data-menu="프로필">👤<span>프로필</span></button>
+    </section>
+
+    <button class="battle-button" id="battle-button">
+      전투 시작
+    </button>
+  </main>
+
+  <div id="menu-modal" class="modal hidden">
+    <div class="modal-box">
+      <button id="close-modal">✕</button>
+      <h2 id="modal-title"></h2>
+      <p id="modal-description"></p>
+    </div>
   </div>
 `;
 
-const pages = {
-  '친구': '친구 목록과 친구 초대 기능',
-  '클럽': '클럽 만들기와 클럽 가입',
-  '우편함': '새로운 소식과 보상',
-  '상점': '코인과 캐릭터 상품',
-  '브롤러': '캐릭터 선택과 성장',
-  '스타 드롭': '스타 드롭 보상',
-  '퀘스트': '일일 퀘스트와 보상',
-  '이벤트': '새로운 전투 이벤트'
+const menuDescriptions = {
+  친구: '친구 목록과 함께 플레이할 친구를 확인하세요.',
+  클럽: '클럽에 가입하고 다른 플레이어와 함께하세요.',
+  상점: '새로운 아이템과 보상을 확인하세요.',
+  브롤러: '전투에 사용할 캐릭터를 선택하세요.',
+  '스타 드롭': '무료 보상을 확인하세요.',
+  퀘스트: '퀘스트를 완료하고 보상을 받으세요.',
+  프로필: '플레이어 정보와 전적을 확인하세요.'
 };
 
-const overlay = document.querySelector('#overlay');
+const modal = document.querySelector('#menu-modal');
+const modalTitle = document.querySelector('#modal-title');
+const modalDescription = document.querySelector('#modal-description');
 
-document.querySelectorAll('[data-page]').forEach(button => {
+document.querySelectorAll('[data-menu]').forEach(button => {
   button.addEventListener('click', () => {
-    const page = button.dataset.page;
-    document.querySelector('#page-title').textContent = page;
-    document.querySelector('#page-content').textContent = pages[page];
-    overlay.classList.add('active');
+    const name = button.dataset.menu;
+    modalTitle.textContent = name;
+    modalDescription.textContent =
+      menuDescriptions[name] || '준비 중인 메뉴입니다.';
+    modal.classList.remove('hidden');
   });
 });
 
-document.querySelector('#close').addEventListener('click', () => {
-  overlay.classList.remove('active');
+document.querySelector('#event-button').addEventListener('click', () => {
+  modalTitle.textContent = '오늘의 이벤트';
+  modalDescription.textContent = '3대3 아레나 전투를 준비하세요!';
+  modal.classList.remove('hidden');
 });
 
-document.querySelector('#battle').addEventListener('click', () => {
-  document.querySelector('#page-title').textContent = '전투 준비';
-  document.querySelector('#page-content').textContent =
-    '3대3 아레나 전투를 준비하고 있습니다.';
-  overlay.classList.add('active');
+document.querySelector('#close-modal').addEventListener('click', () => {
+  modal.classList.add('hidden');
 });
 
-// 3D 캐릭터 장면
-const characterArea = document.querySelector('#character');
+modal.addEventListener('click', event => {
+  if (event.target === modal) {
+    modal.classList.add('hidden');
+  }
+});
+
+// 3D 로비 캐릭터
+const canvasContainer = document.querySelector('#hero-canvas');
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x222044);
+scene.background = new THREE.Color(0x202044);
 
 const camera = new THREE.PerspectiveCamera(
-  35,
+  45,
   1,
   0.1,
   100
@@ -113,46 +123,63 @@ camera.lookAt(0, 1, 0);
 
 const renderer = new THREE.WebGLRenderer({
   antialias: true,
-  alpha: true
+  alpha: false
 });
 
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-characterArea.appendChild(renderer.domElement);
+renderer.setPixelRatio(
+  Math.min(window.devicePixelRatio, 2)
+);
 
-scene.add(new THREE.HemisphereLight(0xffffff, 0x444466, 2));
+canvasContainer.appendChild(renderer.domElement);
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x555577, 2));
 
 const light = new THREE.DirectionalLight(0xffffff, 2);
 light.position.set(3, 5, 4);
 scene.add(light);
 
-const warrior = new THREE.Group();
-
+// 캐릭터 몸통
 const body = new THREE.Mesh(
-  new THREE.CapsuleGeometry(0.65, 0.7, 5, 12),
-  new THREE.MeshStandardMaterial({ color: 0x2788ff })
+  new THREE.CapsuleGeometry(0.65, 0.8, 6, 12),
+  new THREE.MeshStandardMaterial({ color: 0x398cff })
 );
-body.position.y = 1;
-warrior.add(body);
+body.position.y = 1.1;
+scene.add(body);
 
+// 캐릭터 머리
 const head = new THREE.Mesh(
   new THREE.SphereGeometry(0.48, 24, 24),
-  new THREE.MeshStandardMaterial({ color: 0xffcf9e })
+  new THREE.MeshStandardMaterial({ color: 0xffc28a })
 );
 head.position.y = 2;
-warrior.add(head);
+scene.add(head);
 
-const helmet = new THREE.Mesh(
-  new THREE.SphereGeometry(0.5, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2),
-  new THREE.MeshStandardMaterial({ color: 0xffc42d })
+// 눈
+const eyeMaterial = new THREE.MeshBasicMaterial({
+  color: 0x171717
+});
+
+for (const x of [-0.16, 0.16]) {
+  const eye = new THREE.Mesh(
+    new THREE.SphereGeometry(0.055, 12, 12),
+    eyeMaterial
+  );
+  eye.position.set(x, 2.05, 0.43);
+  scene.add(eye);
+}
+
+// 바닥
+const floor = new THREE.Mesh(
+  new THREE.CircleGeometry(3, 48),
+  new THREE.MeshStandardMaterial({ color: 0x34345c })
 );
-helmet.position.y = 2.25;
-warrior.add(helmet);
+floor.rotation.x = -Math.PI / 2;
+floor.position.y = 0;
+scene.add(floor);
 
-scene.add(warrior);
-
-function resize() {
-  const width = characterArea.clientWidth;
-  const height = characterArea.clientHeight;
+function resizeRenderer() {
+  const width = canvasContainer.clientWidth;
+  const height = canvasContainer.clientHeight;
 
   if (!width || !height) return;
 
@@ -161,14 +188,45 @@ function resize() {
   renderer.setSize(width, height);
 }
 
-window.addEventListener('resize', resize);
-resize();
+window.addEventListener('resize', resizeRenderer);
+resizeRenderer();
+
+let lobbyRunning = true;
 
 function animate() {
+  if (!lobbyRunning) return;
+
   requestAnimationFrame(animate);
-  warrior.rotation.y = Math.sin(Date.now() * 0.0005) * 0.2;
-  warrior.position.y = Math.sin(Date.now() * 0.002) * 0.08;
+
+  body.rotation.y += 0.005;
+  head.rotation.y = Math.sin(Date.now() * 0.001) * 0.08;
+
   renderer.render(scene, camera);
 }
 
 animate();
+
+// 전투 시작
+document.querySelector('#battle-button').addEventListener('click', () => {
+  const battleContainer = document.createElement('div');
+  battleContainer.id = 'battle-container';
+  document.body.appendChild(battleContainer);
+
+  lobbyRunning = false;
+
+  const cleanup = startBattle(battleContainer);
+
+  const exitButton = battleContainer.querySelector('.battle-exit');
+
+  if (exitButton) {
+    exitButton.addEventListener('click', () => {
+      if (typeof cleanup === 'function') {
+        cleanup();
+      }
+
+      battleContainer.remove();
+      lobbyRunning = true;
+      animate();
+    });
+  }
+});
