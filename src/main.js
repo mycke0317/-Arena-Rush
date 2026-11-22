@@ -2,7 +2,18 @@
 import './style.css';
 import './battle.css';
 import * as THREE from 'three';
+
 import { startBattle } from './battle.js';
+import { GAME_DATA } from './game-data.js';
+import { getFriends, addFriend, removeFriend } from './friends.js';
+import { getClub, createClub, leaveClub } from './club.js';
+import { getQuests, completeQuest } from './quest.js';
+import { getShopItems, purchaseItem } from './shop.js';
+import { openStarDrop } from './stardrop.js';
+import { getProfile, changePlayerName } from './profile.js';
+import { saveGame, loadGame } from './storage.js';
+
+loadGame();
 
 const app = document.querySelector('#app');
 
@@ -12,14 +23,13 @@ app.innerHTML = `
       <div class="profile">
         <div class="profile-avatar">⚔️</div>
         <div>
-          <strong>플레이어</strong>
-          <small>레벨 1</small>
+          <strong id="player-name"></strong>
+          <small id="player-level"></small>
         </div>
       </div>
-
       <div class="currencies">
-        <span>🪙 100</span>
-        <span>💎 10</span>
+        <span id="player-coins"></span>
+        <span id="player-gems"></span>
       </div>
     </header>
 
@@ -61,39 +71,228 @@ app.innerHTML = `
     <div class="modal-box">
       <button id="close-modal">✕</button>
       <h2 id="modal-title"></h2>
-      <p id="modal-description"></p>
+      <div id="modal-content"></div>
     </div>
   </div>
 `;
 
-const menuDescriptions = {
-  친구: '친구 목록과 함께 플레이할 친구를 확인하세요.',
-  클럽: '클럽에 가입하고 다른 플레이어와 함께하세요.',
-  상점: '새로운 아이템과 보상을 확인하세요.',
-  브롤러: '전투에 사용할 캐릭터를 선택하세요.',
-  '스타 드롭': '무료 보상을 확인하세요.',
-  퀘스트: '퀘스트를 완료하고 보상을 받으세요.',
-  프로필: '플레이어 정보와 전적을 확인하세요.'
-};
-
 const modal = document.querySelector('#menu-modal');
 const modalTitle = document.querySelector('#modal-title');
-const modalDescription = document.querySelector('#modal-description');
+const modalContent = document.querySelector('#modal-content');
 
-document.querySelectorAll('[data-menu]').forEach(button => {
-  button.addEventListener('click', () => {
-    const name = button.dataset.menu;
-    modalTitle.textContent = name;
-    modalDescription.textContent =
-      menuDescriptions[name] || '준비 중인 메뉴입니다.';
-    modal.classList.remove('hidden');
+function refreshProfile() {
+  const profile = getProfile();
+
+  document.querySelector('#player-name').textContent = profile.name;
+  document.querySelector('#player-level').textContent = `레벨 ${profile.level}`;
+  document.querySelector('#player-coins').textContent = `🪙 ${GAME_DATA.player.coins}`;
+  document.querySelector('#player-gems').textContent = `💎 ${GAME_DATA.player.gems}`;
+}
+
+function saveAndRefresh() {
+  saveGame();
+  refreshProfile();
+}
+
+function makeButton(label, callback) {
+  const element = document.createElement('button');
+  element.type = 'button';
+  element.textContent = label;
+  element.addEventListener('click', callback);
+  return element;
+}
+
+function openMenu(title, content) {
+  modalTitle.textContent = title;
+  modalContent.replaceChildren();
+
+  if (typeof content === 'string') {
+    modalContent.textContent = content;
+  } else {
+    modalContent.appendChild(content);
+  }
+
+  modal.classList.remove('hidden');
+}
+
+function showFriends() {
+  const panel = document.createElement('div');
+  const input = document.createElement('input');
+  input.placeholder = '친구 닉네임';
+
+  panel.append(
+    input,
+    makeButton('친구 추가', () => {
+      const result = addFriend(input.value);
+      alert(result.message);
+      if (result.success) showFriends();
+    })
+  );
+
+  getFriends().forEach(friend => {
+    const line = document.createElement('p');
+    line.textContent = `${friend.name} · ${friend.status} `;
+
+    line.appendChild(makeButton('삭제', () => {
+      removeFriend(friend.id);
+      showFriends();
+    }));
+
+    panel.appendChild(line);
+  });
+
+  openMenu('친구', panel);
+}
+
+function showClub() {
+  const panel = document.createElement('div');
+  const club = getClub();
+
+  if (club) {
+    const info = document.createElement('p');
+    info.textContent = `${club.name} · 멤버 ${club.members}명`;
+
+    panel.append(
+      info,
+      makeButton('클럽 나가기', () => {
+        leaveClub();
+        showClub();
+      })
+    );
+  } else {
+    const input = document.createElement('input');
+    input.placeholder = '새 클럽 이름';
+
+    panel.append(
+      input,
+      makeButton('클럽 만들기', () => {
+        const result = createClub(input.value);
+        alert(result.message);
+        if (result.success) showClub();
+      })
+    );
+  }
+
+  openMenu('클럽', panel);
+}
+
+function showShop() {
+  const panel = document.createElement('div');
+
+  getShopItems().forEach(item => {
+    const line = document.createElement('p');
+    line.textContent = `${item.name} - ${item.description} `;
+
+    line.appendChild(makeButton(
+      item.price === 0 ? '무료 받기' : `${item.price} 코인 구매`,
+      () => {
+        const result = purchaseItem(item.id);
+        alert(result.message);
+        saveAndRefresh();
+      }
+    ));
+
+    panel.appendChild(line);
+  });
+
+  openMenu('상점', panel);
+}
+
+function showBrawlers() {
+  const panel = document.createElement('div');
+
+  GAME_DATA.brawlers.forEach(brawler => {
+    const line = document.createElement('p');
+    line.textContent =
+      `${brawler.name} · ${brawler.role} · 체력 ${brawler.health} · ` +
+      (brawler.unlocked ? '보유 중' : '잠김');
+
+    panel.appendChild(line);
+  });
+
+  openMenu('브롤러', panel);
+}
+
+function showQuests() {
+  const panel = document.createElement('div');
+
+  getQuests().forEach(quest => {
+    const line = document.createElement('p');
+    line.textContent =
+      `${quest.title} · 보상 ${quest.reward} 코인 `;
+
+    if (quest.completed) {
+      line.append('완료');
+    } else {
+      line.appendChild(makeButton('완료 처리', () => {
+        const reward = completeQuest(quest.id);
+        alert(`${reward} 코인을 획득했습니다!`);
+        saveAndRefresh();
+        showQuests();
+      }));
+    }
+
+    panel.appendChild(line);
+  });
+
+  openMenu('퀘스트', panel);
+}
+
+function showStarDrop() {
+  const panel = document.createElement('div');
+
+  panel.appendChild(makeButton('스타 드롭 열기 🎁', () => {
+    const result = openStarDrop();
+    alert(result.message);
+    saveAndRefresh();
+  }));
+
+  openMenu('스타 드롭', panel);
+}
+
+function showProfile() {
+  const panel = document.createElement('div');
+  const profile = getProfile();
+
+  const info = document.createElement('p');
+  info.textContent =
+    `${profile.name} · 레벨 ${profile.level} · 트로피 ${profile.trophies}`;
+
+  const input = document.createElement('input');
+  input.placeholder = '새 닉네임';
+
+  panel.append(
+    info,
+    input,
+    makeButton('닉네임 변경', () => {
+      const result = changePlayerName(input.value);
+      alert(result.message);
+      saveAndRefresh();
+      showProfile();
+    })
+  );
+
+  openMenu('프로필', panel);
+}
+
+const menuActions = {
+  친구: showFriends,
+  클럽: showClub,
+  상점: showShop,
+  브롤러: showBrawlers,
+  '스타 드롭': showStarDrop,
+  퀘스트: showQuests,
+  프로필: showProfile
+};
+
+document.querySelectorAll('[data-menu]').forEach(element => {
+  element.addEventListener('click', () => {
+    menuActions[element.dataset.menu]?.();
   });
 });
 
 document.querySelector('#event-button').addEventListener('click', () => {
-  modalTitle.textContent = '오늘의 이벤트';
-  modalDescription.textContent = '3대3 아레나 전투를 준비하세요!';
-  modal.classList.remove('hidden');
+  openMenu('오늘의 이벤트', '3대3 아레나 전투를 준비하세요!');
 });
 
 document.querySelector('#close-modal').addEventListener('click', () => {
@@ -106,18 +305,14 @@ modal.addEventListener('click', event => {
   }
 });
 
+refreshProfile();
+
 // 3D 로비 캐릭터
 const canvasContainer = document.querySelector('#hero-canvas');
-
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x202044);
 
-const camera = new THREE.PerspectiveCamera(
-  45,
-  1,
-  0.1,
-  100
-);
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
 camera.position.set(0, 2.5, 7);
 camera.lookAt(0, 1, 0);
 
@@ -126,10 +321,7 @@ const renderer = new THREE.WebGLRenderer({
   alpha: false
 });
 
-renderer.setPixelRatio(
-  Math.min(window.devicePixelRatio, 2)
-);
-
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 canvasContainer.appendChild(renderer.domElement);
 
 scene.add(new THREE.HemisphereLight(0xffffff, 0x555577, 2));
@@ -138,7 +330,6 @@ const light = new THREE.DirectionalLight(0xffffff, 2);
 light.position.set(3, 5, 4);
 scene.add(light);
 
-// 캐릭터 몸통
 const body = new THREE.Mesh(
   new THREE.CapsuleGeometry(0.65, 0.8, 6, 12),
   new THREE.MeshStandardMaterial({ color: 0x398cff })
@@ -146,7 +337,6 @@ const body = new THREE.Mesh(
 body.position.y = 1.1;
 scene.add(body);
 
-// 캐릭터 머리
 const head = new THREE.Mesh(
   new THREE.SphereGeometry(0.48, 24, 24),
   new THREE.MeshStandardMaterial({ color: 0xffc28a })
@@ -154,10 +344,7 @@ const head = new THREE.Mesh(
 head.position.y = 2;
 scene.add(head);
 
-// 눈
-const eyeMaterial = new THREE.MeshBasicMaterial({
-  color: 0x171717
-});
+const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0x171717 });
 
 for (const x of [-0.16, 0.16]) {
   const eye = new THREE.Mesh(
@@ -168,13 +355,11 @@ for (const x of [-0.16, 0.16]) {
   scene.add(eye);
 }
 
-// 바닥
 const floor = new THREE.Mesh(
   new THREE.CircleGeometry(3, 48),
   new THREE.MeshStandardMaterial({ color: 0x34345c })
 );
 floor.rotation.x = -Math.PI / 2;
-floor.position.y = 0;
 scene.add(floor);
 
 function resizeRenderer() {
@@ -197,10 +382,8 @@ function animate() {
   if (!lobbyRunning) return;
 
   requestAnimationFrame(animate);
-
   body.rotation.y += 0.005;
   head.rotation.y = Math.sin(Date.now() * 0.001) * 0.08;
-
   renderer.render(scene, camera);
 }
 
@@ -215,18 +398,16 @@ document.querySelector('#battle-button').addEventListener('click', () => {
   lobbyRunning = false;
 
   const cleanup = startBattle(battleContainer);
-
   const exitButton = battleContainer.querySelector('.battle-exit');
 
   if (exitButton) {
     exitButton.addEventListener('click', () => {
-      if (typeof cleanup === 'function') {
-        cleanup();
-      }
+      if (typeof cleanup === 'function') cleanup();
 
       battleContainer.remove();
       lobbyRunning = true;
       animate();
+      saveAndRefresh();
     });
   }
 });
