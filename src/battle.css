@@ -1,0 +1,137 @@
+
+.battle-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  overflow: hidden;
+  background: #18253b;
+  font-family: Arial, sans-serif;
+  touch-action: none;
+}
+
+.battle-world {
+  position: absolute;
+  inset: 0;
+}
+
+.battle-world canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.battle-score {
+  position: absolute;
+  z-index: 3;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #182443e8;
+  border: 2px solid #ffffff88;
+  border-radius: 14px;
+  padding: 10px 18px;
+  color: white;
+  font-size: 17px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.battle-joystick {
+  position: absolute;
+  z-index: 5;
+  left: 25px;
+  bottom: 30px;
+  width: 115px;
+  height: 115px;
+  border: 4px solid #ffffff99;
+  border-radius: 50%;
+  background: #ffffff30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+}
+
+.battle-stick {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #ffffffdd;
+  border: 3px solid #7185b5;
+  box-shadow: 0 4px 8px #0007;
+  pointer-events: none;
+}
+
+.battle-attack,
+.battle-super {
+  position: absolute;
+  z-index: 5;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  text-shadow: 1px 2px #333;
+  box-shadow: 0 5px #0006;
+  touch-action: none;
+}
+
+.battle-attack {
+  right: 25px;
+  bottom: 35px;
+  width: 88px;
+  height: 88px;
+  background: linear-gradient(#ff7962, #d52e35);
+  border: 4px solid white;
+  font-size: 19px;
+}
+
+.battle-super {
+  right: 125px;
+  bottom: 135px;
+  width: 65px;
+  height: 65px;
+  background: linear-gradient(#ffe36b, #f3a51c);
+  border: 3px solid white;
+  color: #5b3500;
+  font-size: 15px;
+  text-shadow: none;
+}
+
+.battle-exit {
+  position: absolute;
+  z-index: 6;
+  top: 18px;
+  left: 15px;
+  background: #d83d45;
+  border: 2px solid white;
+  border-radius: 10px;
+  padding: 9px 14px;
+  font-weight: bold;
+}
+
+.battle-attack:active,
+.battle-super:active {
+  transform: scale(.9);
+}
+
+@media (max-height: 600px) {
+  .battle-joystick {
+    width: 90px;
+    height: 90px;
+    bottom: 15px;
+  }
+
+  .battle-attack {
+    width: 70px;
+    height: 70px;
+    bottom: 20px;
+  }
+
+  .battle-super {
+    right: 100px;
+    bottom: 105px;
+    width: 55px;
+    height: 55px;
+  }
+}
